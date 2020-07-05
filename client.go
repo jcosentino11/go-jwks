@@ -174,7 +174,8 @@ func (c *Client) GetSigningKey(kid string) (result *Key, err error) {
 	if err == nil {
 		for _, key := range keys {
 			if key.Kid == kid && key.Use == "sig" {
-				result = &key
+				k := key
+				result = &k
 			}
 		}
 	}

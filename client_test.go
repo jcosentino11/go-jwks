@@ -111,7 +111,10 @@ func (t *mockSuccessTransport) RoundTrip(req *http.Request) (*http.Response, err
 		Request:    req,
 		StatusCode: http.StatusOK,
 	}
-	responseBody := `{"keys":[{"alg":"RS256","kty":"RSA","use":"sig","x5c":["D4dtuk"],"n":"VKOoRQ","e":"AQAB","kid":"GREY2MQ","x5t":"GREY2MQ"}]}`
+	responseBody := `{"keys":[
+	{"alg":"RS256","kty":"RSA","use":"sig","x5c":["D4dtuk"],"n":"VKOoRQ","e":"AQAB","kid":"KEY1","x5t":"w45hws4af"},
+	{"alg":"RS256","kty":"RSA","use":"sig","x5c":["Abcd2"],"n":"aberba","e":"RBCA","kid":"KEY2","x5t":"adfbadfb"}
+	]}`
 	response.Body = ioutil.NopCloser(strings.NewReader(responseBody))
 	return response, nil
 }
@@ -176,7 +179,7 @@ func TestSuccessHttpRequestDebugLogging(t *testing.T) {
 
 	loggedMsg := buf.String()
 	assert(t, err == nil)
-	assert(t, strings.Contains(loggedMsg, "Fetched 1 keys"))
+	assert(t, strings.Contains(loggedMsg, "Fetched 2 keys"))
 }
 
 func TestSuccessHttpRequestNoKey(t *testing.T) {
@@ -185,19 +188,30 @@ func TestSuccessHttpRequestNoKey(t *testing.T) {
 	keys, err := client.GetKeys()
 
 	assert(t, err == nil)
-	assert(t, len(keys) == 1)
+	assert(t, len(keys) == 2)
 
 	key := keys[0]
 	assert(t, key.Alg == "RS256")
-	assert(t, key.Kid == "GREY2MQ")
+	assert(t, key.Kid == "KEY1")
 	assert(t, key.Kty == "RSA")
 	assert(t, key.Use == "sig")
-	assert(t, key.X5t == "GREY2MQ")
+	assert(t, key.X5t == "w45hws4af")
 	assert(t, len(key.X5c) == 1)
 	assert(t, key.X5c[0] == "D4dtuk")
 	assert(t, key.E == "AQAB")
 	assert(t, key.N == "VKOoRQ")
 	assert(t, !client.expiration.IsZero())
+
+	key2 := keys[1]
+	assert(t, key2.Alg == "RS256")
+	assert(t, key2.Kid == "KEY2")
+	assert(t, key2.Kty == "RSA")
+	assert(t, key2.Use == "sig")
+	assert(t, key2.X5t == "adfbadfb")
+	assert(t, len(key2.X5c) == 1)
+	assert(t, key2.X5c[0] == "Abcd2")
+	assert(t, key2.E == "RBCA")
+	assert(t, key2.N == "aberba")
 }
 
 func TestMalformedHttpRequest(t *testing.T) {
@@ -209,7 +223,16 @@ func TestMalformedHttpRequest(t *testing.T) {
 
 func TestGetSigningKeyForExistingKey(t *testing.T) {
 	client := setupMockedHTTPTest("success")
-	key, err := client.GetSigningKey("GREY2MQ")
+	key, err := client.GetSigningKey("KEY1")
+	assert(t, key.X5c[0] == "D4dtuk")
+	assert(t, err == nil)
+	assert(t, key != nil)
+}
+
+func TestGetSecondSigningKeyForExistingKey(t *testing.T) {
+	client := setupMockedHTTPTest("success")
+	key, err := client.GetSigningKey("KEY2")
+	assert(t, key.X5c[0] == "Abcd2")
 	assert(t, err == nil)
 	assert(t, key != nil)
 }
